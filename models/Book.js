@@ -1,5 +1,6 @@
 const { MIME_TYPE_EPUB, UPLOAD_PATH, UPLOAD_URL } = require('../utils/constant')
 const fs = require('fs')
+const Epub = require('../utils/epub')
 
 class Book {
   constructor(file, data) {
@@ -64,6 +65,29 @@ class Book {
     this.updateDt = new Date().getTime()
     this.updateType = data.updateType === 0 ? data.updateType : UPDATE_TYPE_FROM_WEB
     this.contents = data.contents
+  }
+  parse() {
+    return new Promise((resolve, reject) => {
+      const bookPath = `${UPLOAD_PATH}${this.path}`
+      if (!this.path || !fs.existsSync(bookPath)) {
+        reject(new Error('电子书路径不存在'))
+      }
+      const epub = new Epub(bookPath)
+      epub.on('error', err => {
+        reject(err)
+      })
+      epub.on('end', err => {
+        if (err) {
+          reject(err)
+        } else {
+          console.log('epub的内容\n');
+          console.log(epub.metadata);
+          resolve()
+        }
+      })
+      // 这里是epub的parse()方法，与Book对象无关。
+      epub.parse()
+    })
   }
 }
 
