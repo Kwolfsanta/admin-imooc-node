@@ -82,7 +82,49 @@ class Book {
         } else {
           console.log('epub的内容\n');
           console.log(epub.metadata);
-          resolve()
+          let {
+            title,
+            language,
+            creator,
+            creatorFileAs,
+            publisher,
+            cover
+          } = epub.metadata
+          // title = ''
+          if (!title) {
+            reject(new Error('图书标题为空'))
+          } else {
+            this.title = title
+            this.language = language || 'en'
+            this.author = creator || creatorFileAs || 'unknown'
+            this.publisher = publisher || 'unknown'
+            this.rootFile = epub.rootFile
+            const handleGetImage = (error, imgBuffer, mimeType) => {
+              if (error) {
+                reject(error)
+              } else {
+                const suffix = mimeType.split('/')[1]
+                const coverPath = `${UPLOAD_PATH}/img/${this.fileName}.${suffix}`
+                const coverUrl = `${UPLOAD_URL}/img/${this.fileName}.${suffix}`
+                fs.writeFileSync(coverPath, imgBuffer, 'binary')
+                this.coverPath = `/img/${this.fileName}.${suffix}`
+                this.cover = coverUrl
+                resolve(this)
+              }
+            }
+            try {
+              this.unzip() // 解压电子书
+              this.parseContents(epub)
+                .then(({ chapters, chapterTree }) => {
+                  this.contents = chapters
+                  this.contentsTree = chapterTree
+                  epub.getImage(cover, handleGetImage) // 获取封面图片
+                })
+                .catch(err => reject(err)) // 解析目录
+            } catch (e) {
+              reject(e)
+            }
+          }
         }
       })
       // 这里是epub的parse()方法，与Book对象无关。
